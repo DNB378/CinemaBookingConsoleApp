@@ -2,8 +2,12 @@
 {
     class Seat
     {
-        public int Row { get; }
-        public int Number { get; }
+        public int Row { get; set; }
+        public int Number { get; set; }
+
+        public Seat()
+        {
+        }
 
         public Seat(int row, int number)
         {

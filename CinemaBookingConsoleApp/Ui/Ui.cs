@@ -4,12 +4,52 @@ namespace CinemaBookingConsoleApp
 {
     static class Ui
     {
+        private static void WriteColored(string text, ConsoleColor color, bool newLine)
+        {
+            var prev = Console.ForegroundColor;
+            Console.ForegroundColor = color;
+            if (newLine)
+                Console.WriteLine(text);
+            else
+                Console.Write(text);
+            Console.ForegroundColor = prev;
+        }
+
+        public static void WriteHeader(string text)
+        {
+            WriteColored(text, ConsoleColor.Cyan, true);
+        }
+
+        public static void WriteHint(string text)
+        {
+            WriteColored(text, ConsoleColor.DarkGray, true);
+        }
+
+        public static void WritePrompt(string text)
+        {
+            WriteColored(text, ConsoleColor.Green, false);
+        }
+
+        public static void WriteError(string text)
+        {
+            WriteColored(text, ConsoleColor.Red, true);
+        }
+
+        public static void WriteWarning(string text)
+        {
+            WriteColored(text, ConsoleColor.DarkYellow, true);
+        }
+
         public static void Pause(string? message = null)
         {
             if (!string.IsNullOrWhiteSpace(message))
-                Console.WriteLine("\n" + message);
+            {
+                Console.WriteLine();
+                WriteWarning(message);
+            }
 
-            Console.WriteLine("\nНатисніть Enter для продовження...");
+            Console.WriteLine();
+            WriteHint("Натисніть Enter для продовження...");
             Console.ReadLine();
         }
 
@@ -17,18 +57,18 @@ namespace CinemaBookingConsoleApp
         {
             while (true)
             {
-                Console.Write(prompt);
+                WritePrompt(prompt);
                 var s = Console.ReadLine();
                 if (!string.IsNullOrWhiteSpace(s))
                     return s.Trim();
 
-                Console.WriteLine("Поле не може бути порожнім.");
+                WriteError("Поле не може бути порожнім.");
             }
         }
 
         public static string ReadOptional(string prompt)
         {
-            Console.Write(prompt);
+            WritePrompt(prompt);
             return Console.ReadLine() ?? "";
         }
 
@@ -36,12 +76,12 @@ namespace CinemaBookingConsoleApp
         {
             while (true)
             {
-                Console.Write(prompt);
+                WritePrompt(prompt);
                 var s = Console.ReadLine();
                 if (int.TryParse(s, out var v) && v >= min && v <= max)
                     return v;
 
-                Console.WriteLine($"Введіть ціле число в діапазоні {min}..{max}.");
+                WriteError($"Введіть ціле число в діапазоні {min}..{max}.");
             }
         }
 
@@ -49,18 +89,18 @@ namespace CinemaBookingConsoleApp
         {
             while (true)
             {
-                Console.Write(prompt);
+                WritePrompt(prompt);
                 var s = Console.ReadLine()?.Trim();
                 if (string.IsNullOrWhiteSpace(s))
                 {
-                    Console.WriteLine("Дата/час не може бути порожньою.");
+                    WriteError("Дата/час не може бути порожньою.");
                     continue;
                 }
 
                 if (DateTime.TryParseExact(s, "dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
                     return dt;
 
-                Console.WriteLine("Невірний формат. Приклад: 15.01.2026 18:30");
+                WriteError("Невірний формат. Приклад: 15.01.2026 18:30");
             }
         }
     }

@@ -3,14 +3,19 @@ namespace CinemaBookingConsoleApp
 {
     static class Program
     {
+        private static readonly JsonStorage Storage = new JsonStorage(Path.Combine(Environment.CurrentDirectory, "data.json"));
+
         private static void Main()
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-
-            var db = new InMemoryDb();
-            SeedDemoData(db);
+            InMemoryDb db;
+            if (!Storage.TryLoad(out db))
+            {
+                SeedDemoData(db);
+                Storage.Save(db);
+            }
             AuthService.EnsureAdminUser(db);
-
+            Storage.Save(db);
             while (true)
             {
                 var user = AuthMenu(db);
@@ -29,12 +34,12 @@ namespace CinemaBookingConsoleApp
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("=== КІНОТЕАТР: БРОНЮВАННЯ КВИТКІВ (Консольний застосунок) ===");
+                Ui.WriteHeader("=== КІНОТЕАТР: БРОНЮВАННЯ КВИТКІВ ===");
                 Console.WriteLine("1) Увійти");
                 Console.WriteLine("2) Зареєструватися");
                 Console.WriteLine("0) Вихід");
                 Console.WriteLine();
-                Console.WriteLine($"Підказка: адмін логін {AuthService.AdminLogin}, пароль {AuthService.AdminPassword}");
+                Ui.WriteHint($"(логін адміна{AuthService.AdminLogin}, пароль адміна{AuthService.AdminPassword})");
                 Console.Write("\nВаш вибір: ");
 
                 var choice = Console.ReadLine()?.Trim();
@@ -47,6 +52,7 @@ namespace CinemaBookingConsoleApp
                         break;
                     case "2":
                         AuthService.Register(db);
+                        Storage.Save(db);
                         break;
                     case "0":
                         return null;
@@ -62,8 +68,8 @@ namespace CinemaBookingConsoleApp
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("=== МЕНЮ КЛІЄНТА ===");
-                Console.WriteLine($"Профіль: {user.DisplayName} ({user.Login})");
+                Ui.WriteHeader("=== МЕНЮ КЛІЄНТА ===");
+                Ui.WriteHint($"Профіль: {user.DisplayName} ({user.Login})");
                 Console.WriteLine("1) Переглянути фільми");
                 Console.WriteLine("2) Переглянути найближчі сеанси");
                 Console.WriteLine("3) Забронювати квитки (обрати сеанс і місця)");
@@ -98,14 +104,13 @@ namespace CinemaBookingConsoleApp
                 }
             }
         }
-
         private static void AdminMenu(InMemoryDb db, UserAccount user)
         {
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("=== МЕНЮ АДМІНІСТРАТОРА ===");
-                Console.WriteLine($"Профіль: {user.DisplayName} ({user.Login})");
+                Ui.WriteHeader("=== МЕНЮ АДМІНІСТРАТОРА ===");
+                Ui.WriteHint($"Профіль: {user.DisplayName} ({user.Login})");
                 Console.WriteLine("1) Керування фільмами");
                 Console.WriteLine("2) Керування залами");
                 Console.WriteLine("3) Керування сеансами (розклад)");
@@ -146,7 +151,7 @@ namespace CinemaBookingConsoleApp
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("=== ФІЛЬМИ (АДМІН) ===");
+                Ui.WriteHeader("=== ФІЛЬМИ (АДМІН) ===");
                 Console.WriteLine("1) Список фільмів");
                 Console.WriteLine("2) Додати фільм");
                 Console.WriteLine("3) Редагувати фільм");
@@ -183,7 +188,7 @@ namespace CinemaBookingConsoleApp
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("=== ЗАЛИ (АДМІН) ===");
+                Ui.WriteHeader("=== ЗАЛИ (АДМІН) ===");
                 Console.WriteLine("1) Список залів");
                 Console.WriteLine("2) Додати зал");
                 Console.WriteLine("3) Переглянути схему місць залу");
@@ -216,7 +221,7 @@ namespace CinemaBookingConsoleApp
             while (true)
             {
                 Console.Clear();
-                Console.WriteLine("=== СЕАНСИ / РОЗКЛАД (АДМІН) ===");
+                Ui.WriteHeader("=== СЕАНСИ / РОЗКЛАД (АДМІН) ===");
                 Console.WriteLine("1) Список майбутніх сеансів");
                 Console.WriteLine("2) Додати сеанс");
                 Console.WriteLine("3) Видалити сеанс");
@@ -246,7 +251,7 @@ namespace CinemaBookingConsoleApp
         private static void ShowMovies(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== СПИСОК ФІЛЬМІВ ===");
+            Ui.WriteHeader("=== СПИСОК ФІЛЬМІВ ===");
 
             var movies = GetMoviesSortedById(db);
             if (movies.Count == 0)
@@ -264,7 +269,7 @@ namespace CinemaBookingConsoleApp
         private static void AddMovieFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== ДОДАТИ ФІЛЬМ ===");
+            Ui.WriteHeader("=== ДОДАТИ ФІЛЬМ ===");
 
             var title = Ui.ReadNonEmpty("Назва: ");
             var duration = Ui.ReadInt("Тривалість (хв): ", 1, 600);
@@ -279,13 +284,14 @@ namespace CinemaBookingConsoleApp
             };
 
             db.Movies.Add(movie);
+            Storage.Save(db);
             Ui.Pause("Фільм додано.");
         }
 
         private static void EditMovieFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== РЕДАГУВАТИ ФІЛЬМ ===");
+            Ui.WriteHeader("=== РЕДАГУВАТИ ФІЛЬМ ===");
             ShowMoviesInline(db);
 
             if (db.Movies.Count == 0)
@@ -317,13 +323,14 @@ namespace CinemaBookingConsoleApp
             if (int.TryParse(ageStr, out var newAge) && newAge >= 0 && newAge <= 21)
                 movie.AgeRating = newAge;
 
+            Storage.Save(db);
             Ui.Pause("Фільм оновлено.");
         }
 
         private static void DeleteMovieFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== ВИДАЛИТИ ФІЛЬМ ===");
+            Ui.WriteHeader("=== ВИДАЛИТИ ФІЛЬМ ===");
             ShowMoviesInline(db);
 
             if (db.Movies.Count == 0)
@@ -357,13 +364,14 @@ namespace CinemaBookingConsoleApp
             }
 
             db.Movies.Remove(movie);
+            Storage.Save(db);
             Ui.Pause("Фільм видалено.");
         }
 
         private static void ShowHalls(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== СПИСОК ЗАЛІВ ===");
+            Ui.WriteHeader("=== СПИСОК ЗАЛІВ ===");
 
             var halls = GetHallsSortedById(db);
             if (halls.Count == 0)
@@ -381,7 +389,7 @@ namespace CinemaBookingConsoleApp
         private static void AddHallFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== ДОДАТИ ЗАЛ ===");
+            Ui.WriteHeader("=== ДОДАТИ ЗАЛ ===");
 
             var name = Ui.ReadNonEmpty("Назва залу: ");
             var rows = Ui.ReadInt("Кількість рядів: ", 1, 50);
@@ -396,13 +404,14 @@ namespace CinemaBookingConsoleApp
             };
 
             db.Halls.Add(hall);
+            Storage.Save(db);
             Ui.Pause("Зал додано.");
         }
 
         private static void ShowHallLayoutFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== СХЕМА МІСЦЬ ЗАЛУ ===");
+            Ui.WriteHeader("=== СХЕМА МІСЦЬ ЗАЛУ ===");
             ShowHallsInline(db);
 
             if (db.Halls.Count == 0)
@@ -420,7 +429,7 @@ namespace CinemaBookingConsoleApp
             }
 
             Console.Clear();
-            Console.WriteLine($"=== {hall.Name} (Рядів: {hall.Rows}, Місць у ряду: {hall.SeatsPerRow}) ===");
+            Ui.WriteHeader($"=== {hall.Name} (Рядів: {hall.Rows}, Місць у ряду: {hall.SeatsPerRow}) ===");
             Console.WriteLine("Позначення: O - вільне місце (схема без прив'язки до сеансу)");
             PrintHallLayout(hall, new HashSet<Seat>());
 
@@ -429,7 +438,7 @@ namespace CinemaBookingConsoleApp
         private static void ShowUpcomingSessions(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== МАЙБУТНІ СЕАНСИ ===");
+            Ui.WriteHeader("=== МАЙБУТНІ СЕАНСИ ===");
 
             var sessions = GetUpcomingSessions(db);
             if (sessions.Count == 0)
@@ -445,7 +454,7 @@ namespace CinemaBookingConsoleApp
         private static void AddSessionFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== ДОДАТИ СЕАНС ===");
+            Ui.WriteHeader("=== ДОДАТИ СЕАНС ===");
 
             if (db.Movies.Count == 0)
             {
@@ -504,13 +513,14 @@ namespace CinemaBookingConsoleApp
             };
 
             db.Sessions.Add(session);
+            Storage.Save(db);
             Ui.Pause("Сеанс додано.");
         }
 
         private static void DeleteSessionFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== ВИДАЛИТИ СЕАНС ===");
+            Ui.WriteHeader("=== ВИДАЛИТИ СЕАНС ===");
             ShowSessionsInline(db);
 
             if (db.Sessions.Count == 0)
@@ -544,13 +554,14 @@ namespace CinemaBookingConsoleApp
             }
 
             db.Sessions.Remove(session);
+            Storage.Save(db);
             Ui.Pause("Сеанс видалено.");
         }
 
         private static void BookTicketsFlow(InMemoryDb db, UserAccount user)
         {
             Console.Clear();
-            Console.WriteLine("=== БРОНЮВАННЯ КВИТКІВ ===");
+            Ui.WriteHeader("=== БРОНЮВАННЯ КВИТКІВ ===");
 
             var upcoming = GetUpcomingSessions(db);
             if (upcoming.Count == 0)
@@ -647,6 +658,7 @@ namespace CinemaBookingConsoleApp
             };
 
             db.Bookings.Add(booking);
+            Storage.Save(db);
 
             Ui.Pause($"Бронювання створено. Код бронювання: {booking.Id}");
         }
@@ -654,7 +666,7 @@ namespace CinemaBookingConsoleApp
         private static void CancelBookingFlow(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== СКАСУВАННЯ БРОНЮВАННЯ ===");
+            Ui.WriteHeader("=== СКАСУВАННЯ БРОНЮВАННЯ ===");
 
             if (db.Bookings.Count == 0)
             {
@@ -679,12 +691,13 @@ namespace CinemaBookingConsoleApp
             booking.Status = BookingStatus.Cancelled;
             booking.CancelledAt = DateTime.Now;
 
+            Storage.Save(db);
             Ui.Pause("Бронювання скасовано.");
         }
         private static void ShowBookingsByCustomerFlow(InMemoryDb db, UserAccount user)
         {
             Console.Clear();
-            Console.WriteLine("=== МОЇ БРОНЮВАННЯ ===");
+            Ui.WriteHeader("=== МОЇ БРОНЮВАННЯ ===");
 
             var name = Ui.ReadOptional($"Ім'я/ПІБ (Enter - {user.DisplayName}): ");
             if (string.IsNullOrWhiteSpace(name))
@@ -712,7 +725,7 @@ namespace CinemaBookingConsoleApp
         private static void ShowAllBookings(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== УСІ БРОНЮВАННЯ ===");
+            Ui.WriteHeader("=== УСІ БРОНЮВАННЯ ===");
 
             if (db.Bookings.Count == 0)
             {
@@ -730,7 +743,7 @@ namespace CinemaBookingConsoleApp
         private static void ShowPastSessionsAndMarkCompleted(InMemoryDb db)
         {
             Console.Clear();
-            Console.WriteLine("=== ІСТОРІЯ СЕАНСІВ (МИНУЛІ) ===");
+            Ui.WriteHeader("=== ІСТОРІЯ СЕАНСІВ (МИНУЛІ) ===");
 
             var past = GetPastSessions(db);
             if (past.Count == 0)
@@ -751,6 +764,7 @@ namespace CinemaBookingConsoleApp
                 }
             }
 
+            Storage.Save(db);
             PrintSessionsList(db, past);
             Ui.Pause("Активні бронювання на минулі сеанси позначено як завершені.");
         }
